@@ -1,0 +1,13 @@
+main: tuwavy.tut.Main
+name: Tuwavy-Speedrunner
+version: 1.0
+author: Airwavy
+api-version: 1.13
+softdepend: ['Multiverse-Core', 'Multiverse-NetherPortals', 'Citizens']
+
+commands:
+  speedrunner:
+  manhunt:
+  mh:
+  sr:
+  speedrun:

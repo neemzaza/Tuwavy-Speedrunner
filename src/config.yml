@@ -1,0 +1,38 @@
+# o====================================================================================================o #
+# o                       WELCOME TO CONFIG.YML OF TUWAVY-SPEEDRUNNER PLUGIN                           o #
+# o                       =------------------------------------------------=                           o #
+# o                     You can config below. You can read carefully to follow                         o #
+# o      configuration step Here (Thai lang) : https://it-airwavy.ml/dev#configuration-guide           o #
+# o====================================================================================================o #
+
+# Edition: Personal Edition (Free)
+
+# Reload message
+reload:
+  msg:
+    - "&aConfig has reloaded"
+    - "&bHave fun ;)"
+
+# lobby position are here. Using /speedrunner setlobby to set lobby position
+position:
+  lobby:
+
+#  Select your world by typing the world name in each section.
+world:
+  default-world: "useworld" # Multiverse-core can't regen primary world (called "world") and default-world is used as !%world%!
+  nether-world: "!%world%!_nether"
+  the-end-world: "!%world%!_the_end"
+
+scoreboard:
+  title-on-game-not-started: "&b&lTUWAVY &c&lMAN&f&lHUNT!"
+  title-on-vote: "&b&lTUWAVY &c&lMAN&f&lHUNT!"
+  title-on-game-started: "&b&lTUWAVY &c&lMAN&f&lHUNT!"
+
+stats:
+
+time-stopper:
+  while-time-was-stopped: "3" # seconds
+  cooldown: "300" # seconds
+
+more-settings:
+  kick-on-world-regenerating: "true"
