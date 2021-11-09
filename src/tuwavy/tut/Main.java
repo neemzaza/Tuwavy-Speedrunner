@@ -1,6 +1,5 @@
 package tuwavy.tut;
 
-import com.mojang.authlib.GameProfile;
 import com.onarandombox.MultiverseCore.MultiverseCore;
 import com.onarandombox.MultiverseCore.api.MVWorldManager;
 import com.onarandombox.MultiverseCore.api.MultiverseWorld;
@@ -8,23 +7,12 @@ import com.onarandombox.MultiverseNetherPortals.MultiverseNetherPortals;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.trait.Equipment;
-import net.citizensnpcs.trait.Poses;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
-import net.minecraft.network.protocol.game.PacketPlayOutNamedEntitySpawn;
-import net.minecraft.network.protocol.game.PacketPlayOutPlayerInfo;
-import net.minecraft.server.level.EntityPlayer;
-import net.minecraft.server.network.PlayerConnection;
 import org.bukkit.*;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.command.CommandSender;
-import org.bukkit.craftbukkit.v1_17_R1.CraftServer;
-import org.bukkit.craftbukkit.v1_17_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPlayer;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
-import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -32,60 +20,52 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.*;
 import tuwavy.tut.Files.DataManager;
 
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class Main extends JavaPlugin {
 
+    // Custom config
     public DataManager data;
 
     // Version in main
-    public String version = "PE 1.0 Release";
-    public String prefix = "&b&l[Tuwavy] ";
+    public static final String version = "PE 1.0 Release";
+    public static final String prefix = "&b&l[Tuwavy] ";
 
-    // Import bar
+    // Import Zone
     public Bar bar;
+    public Scoreboard scoreboard;
 
     // Command label
-    private final String[] commandLabels = { "manhunt","mh","speedrunner","sr","speedrun" };
+    private static final String[] commandLabels = { "manhunt","mh","speedrunner","sr","speedrun" };
 
-    // Task running (HashMap)
+    // Task running (HashMap) (Schedule)
     public List<Integer> runningTasks = new ArrayList<Integer>();
-    public int taskOnRunningGame;
-    public int taskOnStartingGame;
-    public int taskOnClearingGame;
-    public int taskOnRunningGame10Ticks;
 
-
-    // Team
-    public List<UUID> runnerTeam = new ArrayList<>(); //ทีม Runner (คนเดียว)
-    public List<UUID> hunterTeam = new ArrayList<>(); //ทีม Hunter
+    //ทีม Runner และ ทีม Hunter
+    public List<UUID> runnerTeam = new ArrayList<>();
+    public List<UUID> hunterTeam = new ArrayList<>();
 
     // Total player
     public List<UUID> allPlayers = new ArrayList<>(); //All Player
 
-    // Wait list while not join (Leave game before)
+    // Wait list while not join (Leave game before) (waitlist for joining again)
     public Map<UUID, String> waitList = new HashMap<>();
 
     // Spectator list
     public List<UUID> spectatorList = new ArrayList<>();
 
-    // Runner number
+    // Runner Order (Each hunter)
     Map<UUID, Integer> runnerNoEachHunter = new HashMap<UUID, Integer>();
 
     // spawnpoint of each speedrunning world
     public Location spawnWorldLocation;
 
-    // runner died count
+    // runner died count (Null Solved)
     public int runnerDiedCount = 0;
-
-    // List of lost runner of that round
-    public List<UUID> lostRunnerPlayers = new ArrayList<>();
 
     // User of sawarudo
     public Player clockStopperUser;
@@ -202,11 +182,12 @@ public class Main extends JavaPlugin {
     @Override
     public void onEnable() { //เมื่อถูก reload, เปิดเซิฟใหม่
         bar = new Bar(this);
+        scoreboard = new Scoreboard(this);
         this.saveDefaultConfig();
         this.getServer().getPluginManager().registerEvents(new Event(this), this);
-        for (int i = 0; i < commandLabels.length; i++) {
-            this.getCommand(commandLabels[i]).setExecutor(new Command(this));
-            this.getCommand(commandLabels[i]).setTabCompleter(new TabComplete());
+        for (String commandLabel : commandLabels) {
+            this.getCommand(commandLabel).setExecutor(new Command(this));
+            this.getCommand(commandLabel).setTabCompleter(new TabComplete());
         }
 
         this.data = new DataManager(this);
@@ -244,12 +225,6 @@ public class Main extends JavaPlugin {
 
     }
 
-    // Count Runner Player (0 and 1)
-    protected Integer getRunnerPlayer() {
-        if (runnerTeam.size() > 0) return 1;
-        else return 0;
-    }
-
     // Count Hunter Player
     protected Integer getHunterPlayer() {
         return hunterTeam.size();
@@ -265,7 +240,7 @@ public class Main extends JavaPlugin {
         // Runner Team
         meta.setDisplayName(ChatColor.GREEN + "Runner Team");
         List<String> lore = new ArrayList<String>();
-        lore.add(ChatColor.WHITE + getRunnerPlayer().toString() + " / 1");
+        lore.add(ChatColor.WHITE + "" + runnerTeam.size() + " / 1");
         lore.add(ChatColor.GRAY + "Click to join runner team");
         meta.setLore(lore);
         item.setItemMeta(meta);
@@ -320,7 +295,7 @@ public class Main extends JavaPlugin {
         // Runner Team
         meta.setDisplayName(ChatColor.GREEN + "Runner Team");
         List<String> lore = new ArrayList<String>();
-        lore.add(ChatColor.WHITE + getRunnerPlayer().toString() + " / 1");
+        lore.add(ChatColor.WHITE + "" + runnerTeam.size() + " / 1");
         lore.add(ChatColor.GRAY + "Click to join runner team");
         meta.setLore(lore);
         item.setItemMeta(meta);
@@ -730,7 +705,7 @@ public class Main extends JavaPlugin {
         }
 
         player.getInventory().clear();
-        onConfigBoard(player);
+        scoreboard.onConfigBoard(player);
         player.getInventory().setItem(8, selectItem);
     }
 
@@ -743,7 +718,7 @@ public class Main extends JavaPlugin {
         }
 
         player.getInventory().clear();
-        onJoinBoard(player);
+        scoreboard.onJoinBoard(player);
         allPlayers.remove(player.getUniqueId());
     }
 
@@ -767,7 +742,7 @@ public class Main extends JavaPlugin {
         runnerTeam.add(player.getUniqueId());
         player.openInventory(runnerGUIInv);
         for (UUID allPlayer : allPlayers) {
-            onConfigBoard(Bukkit.getPlayer(allPlayer));
+            scoreboard.onConfigBoard(Bukkit.getPlayer(allPlayer));
         }
 
         if (hunterTeam.contains(player.getUniqueId())) {
@@ -807,7 +782,7 @@ public class Main extends JavaPlugin {
         player.openInventory(normalGUIInv);
 
         for (UUID allPlayer : allPlayers) {
-            onConfigBoard(Bukkit.getPlayer(allPlayer));
+            scoreboard.onConfigBoard(Bukkit.getPlayer(allPlayer));
         }
 
         player.sendMessage(ChatColor.GREEN + "Joined " + ChatColor.GOLD + "Hunter team!");
@@ -826,7 +801,7 @@ public class Main extends JavaPlugin {
 
         hasGlowing = !hasGlowing;
         for (UUID allPlayer : allPlayers) {
-            onConfigBoard(Bukkit.getPlayer(allPlayer));
+            scoreboard.onConfigBoard(Bukkit.getPlayer(allPlayer));
             if (hasGlowing) {
                 player.playSound(player.getLocation(), Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 1.0f, 1.0f);
                 Bukkit.getPlayer(allPlayer).spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(ChatColor.GREEN + "[Runner " + player.getName() + "] enabled \"Runner glowing\""));
@@ -891,7 +866,7 @@ public class Main extends JavaPlugin {
                 Bukkit.getPlayer(allPlayer).spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(ChatColor.RED + "[Runner " + player.getName() + "] disabled \"Gamemode creative\""));
 
             }
-            onConfigBoard(Bukkit.getPlayer(allPlayer));
+            scoreboard.onConfigBoard(Bukkit.getPlayer(allPlayer));
         }
         return true;
     }
@@ -913,7 +888,7 @@ public class Main extends JavaPlugin {
                 player.playSound(player.getLocation(), Sound.BLOCK_IRON_DOOR_CLOSE, 1.0f, 1.0f);
                 Bukkit.getPlayer(allPlayer).spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(ChatColor.RED + "[Runner " + player.getName() + "] disabled \"Runner have time stopper\""));
             }
-            onConfigBoard(Bukkit.getPlayer(allPlayer));
+            scoreboard.onConfigBoard(Bukkit.getPlayer(allPlayer));
         }
         return true;
     }
@@ -940,7 +915,7 @@ public class Main extends JavaPlugin {
         for (UUID uuid : allPlayers) {
             if (allPlayers.size() > 0) {
                 removePotion(Bukkit.getPlayer(uuid));
-                onJoinBoard(Bukkit.getPlayer(uuid));
+                scoreboard.onJoinBoard(Bukkit.getPlayer(uuid));
                 cooldowns.remove(Bukkit.getPlayer(uuid).getName());
                 gmCooldowns.remove(Bukkit.getPlayer(uuid).getName());
             }
@@ -957,7 +932,6 @@ public class Main extends JavaPlugin {
         }
         runnerTeam.clear();
         hunterTeam.clear();
-        lostRunnerPlayers.clear();
         waitList.clear();
         spectatorList.clear();
 
@@ -999,7 +973,7 @@ public class Main extends JavaPlugin {
                     for (Player players : getServer().getOnlinePlayers()) {
                         players.setGameMode(GameMode.ADVENTURE);
                         bar.removePlayer(players);
-                        onJoinBoard(players);
+                        scoreboard.onJoinBoard(players);
                         players.sendMessage(this.getConfig().getString("more-settings.kick-on-world-regenerating").toLowerCase());
                     }
 
@@ -1097,8 +1071,6 @@ public class Main extends JavaPlugin {
             for (LivingEntity allEntity : user.getWorld().getLivingEntities()) {
                 allEntity.setAI(false);
             }
-            user.addPotionEffect(PotionEffectType.BLINDNESS.createEffect(20, 20));
-            user.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(ChatColor.GREEN + "Time " + (timeStopped ? "stopped" : "not stop")));
         } else {
             removeFakePlayer();
             user.playSound(user.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
@@ -1106,9 +1078,9 @@ public class Main extends JavaPlugin {
             for (LivingEntity allEntity : user.getWorld().getLivingEntities()) {
                 allEntity.setAI(true);
             }
-            user.addPotionEffect(PotionEffectType.BLINDNESS.createEffect(20, 20));
-            user.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(ChatColor.GREEN + "Time " + (timeStopped ? "stopped" : "not stop")));
         }
+        user.addPotionEffect(PotionEffectType.BLINDNESS.createEffect(20, 20));
+        user.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(ChatColor.GREEN + "Time " + (timeStopped ? "stopped" : "not stop")));
     }
 
 
@@ -1291,12 +1263,8 @@ public class Main extends JavaPlugin {
                             Bukkit.getPlayer(allPlayer).getInventory().setItemInMainHand(Salt);
                         }
 
-//                    Location locRunner = playerRunner.getLocation();
-
-//                    Bukkit.getPlayer(allPlayers.get(i)).setCompassTarget(locRunner);
-
                         redLight = !redLight;
-                        onGameBoard(Bukkit.getPlayer(allPlayer));
+                        scoreboard.onGameBoard(Bukkit.getPlayer(allPlayer));
 
                         if (hasGm1) {
 
@@ -1435,11 +1403,6 @@ public class Main extends JavaPlugin {
 
                             // Start Warping
                             if (cooldownsStarting.get(Bukkit.getPlayer(allPlayer).getName()) == 5) { // is equal 0 (0s)
-
-//                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), getConfig().getString("command.tp-to-world")
-//                                        .replace("!%player%!", players.getName())
-//                                        .replace("!%world%!", getConfig().getString("world.default-world"))
-//                                );
                                 spawnWorldLocation = getServer().getWorld(getConfig().getString("world.default-world")).getSpawnLocation();
                                 Bukkit.getPlayer(allPlayer).teleport(spawnWorldLocation);
 //                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "mv tp " + players.getName() + " useworld");
@@ -1448,14 +1411,6 @@ public class Main extends JavaPlugin {
                                 cooldownsStarting.put(Bukkit.getPlayer(allPlayer).getName(), cooldownsStarting.get(Bukkit.getPlayer(allPlayer).getName()) - 1);
 
                             }
-
-//                            if (cooldownsStarting.get(Bukkit.getPlayer(allPlayers.get(i)).getName()) < 5 && cooldownsStarting.get(Bukkit.getPlayer(allPlayers.get(i)).getName()) > 0) { // is equal 0 (0s)
-//                                Bukkit.getLogger().info("" + cooldownsStarting.get(Bukkit.getPlayer(allPlayers.get(i)).getName()));
-//                                Bukkit.getPlayer(allPlayers.get(i)).playSound(Bukkit.getPlayer(allPlayers.get(i)).getLocation(), Sound.BLOCK_BASALT_PLACE, 1.0f, 1.0f);
-//                                Bukkit.getPlayer(allPlayers.get(i)).sendTitle("" + ChatColor.YELLOW + (cooldownsStarting.get(Bukkit.getPlayer(allPlayers.get(i)).getName())), "For best experience, Please call to your friend for talking", 1, 20, 1);
-//                                cooldownsStarting.put(Bukkit.getPlayer(allPlayers.get(i)).getName(), cooldownsStarting.get(Bukkit.getPlayer(allPlayers.get(i)).getName()) - 1);
-//
-//                            }
 
 
                             if (cooldownsStarting.get(Bukkit.getPlayer(allPlayer).getName()) == 0) {
@@ -1476,160 +1431,160 @@ public class Main extends JavaPlugin {
 
     // Scoreboard
         // First board
-    public void onJoinBoard (Player player) {
-        int playerHealth = (int) player.getHealth();
-        ScoreboardManager manager = Bukkit.getScoreboardManager();
-        Scoreboard board = manager.getNewScoreboard();
-        Objective obj = board.registerNewObjective("nsr-board", "dummy", ChatColor.translateAlternateColorCodes('&',
-                getConfig().getString("scoreboard.title-on-game-not-started")));
-        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
-
-        Score space = obj.getScore(" ");
-        space.setScore(3);
-        Score score6 = obj.getScore(ChatColor.translateAlternateColorCodes('&',
-                "&fStatus: " + (!gameReady ? (started ? "&bON PROGRESS" : "&eREGENERATING MAP...") : "&aREADY")));
-        score6.setScore(2);
-        Score score7 = obj.getScore("");
-        score7.setScore(1);
-
-        Score score8 = obj.getScore(ChatColor.translateAlternateColorCodes('&',
-                "&7&oTuWavy | " + version));
-        score8.setScore(0);
-
-        player.setScoreboard(board);
-    }
-
-    public String timeBarCount(double currentTime) {
-        double constTime = Integer.parseInt(getConfig().getString("time-stopper.while-time-was-stopped"));
-
-        double calTime10 = 10 * (constTime / 100);
-        double calTime20 = 20 * (constTime / 100);
-        double calTime30 = 30 * (constTime / 100);
-        double calTime40 = 40 * (constTime / 100);
-        double calTime50 = 50 * (constTime / 100);
-        double calTime60 = 60 * (constTime / 100);
-        double calTime70 = 70 * (constTime / 100);
-        double calTime80 = 80 * (constTime / 100);
-        double calTime90 = 90 * (constTime / 100);
-        double calTime100 = 100 * (constTime / 100);
-
-        if (currentTime <= calTime100 && currentTime >= calTime90)
-            return ChatColor.translateAlternateColorCodes('&', "&b██████████");
-
-        if (currentTime <= calTime90 && currentTime >= calTime80)
-            return ChatColor.translateAlternateColorCodes('&', "&b█████████&7█");
-
-        if (currentTime <= calTime80 && currentTime >= calTime70)
-            return ChatColor.translateAlternateColorCodes('&', "&b████████&7██");
-
-        if (currentTime <= calTime70 && currentTime >= calTime60)
-            return ChatColor.translateAlternateColorCodes('&', "&b███████&7███");
-
-        if (currentTime <= calTime60 && currentTime >= calTime50)
-            return ChatColor.translateAlternateColorCodes('&', "&b██████&7████");
-
-        if (currentTime <= calTime50 && currentTime >= calTime40)
-            return ChatColor.translateAlternateColorCodes('&', "&b█████&7█████");
-
-        if (currentTime <= calTime40 && currentTime >= calTime30)
-            return ChatColor.translateAlternateColorCodes('&', "&b████&7██████");
-
-        if (currentTime <= calTime30 && currentTime >= calTime20)
-            return ChatColor.translateAlternateColorCodes('&', "&b███&7███████");
-
-        if (currentTime <= calTime20 && currentTime >= calTime10)
-            return ChatColor.translateAlternateColorCodes('&', "&b██&7████████");
-
-        if (currentTime <= calTime10)
-            return ChatColor.translateAlternateColorCodes('&', "&b█&7█████████");
-
-        return ChatColor.translateAlternateColorCodes('&', "&cAn error ourruced");
-    }
-
-    // On during game board
-    public void onGameBoard (Player player) {
-        Player playerRunner = Bukkit.getServer().getPlayer(runnerTeam.get(runnerNoEachHunter.get(player.getUniqueId())));
-        Location locRunner = playerRunner.getLocation();
-        ScoreboardManager manager = Bukkit.getScoreboardManager();
-        Scoreboard board = manager.getNewScoreboard();
-        Objective obj = board.registerNewObjective("nsr-board", "dummy", ChatColor.translateAlternateColorCodes('&',
-                getConfig().getString("scoreboard.title-on-game-started")));
-
-        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
-        Score space1 = obj.getScore(" ");
-        space1.setScore(10);
-        Score score = obj.getScore(ChatColor.DARK_AQUA + "Total Players: " + ChatColor.AQUA + allPlayers.size());
-        score.setScore(9);
-        Score score2 = obj.getScore(ChatColor. translateAlternateColorCodes('&', "&b◆ &1[&c&lTEAMS&1]"));
-        score2.setScore(8);
-        Score score3 = obj.getScore(ChatColor.DARK_GREEN + "⚔" + ChatColor.GREEN + " RUNNER TEAM: " + ChatColor.YELLOW + (runnerTeam.size() - runnerDiedCount) + (runnerTeam.contains(player.getUniqueId()) ? ChatColor.DARK_GREEN + " YOU" : ""));
-        score3.setScore(7);
-        Score score4 = obj.getScore(ChatColor.GOLD + "\uD83C\uDFF9" + ChatColor.GOLD + " HUNTER TEAM: " + ChatColor.YELLOW + hunterTeam.size() + (hunterTeam.contains(player.getUniqueId()) ? ChatColor.GOLD + " YOU" : ""));
-        score4.setScore(6);
-        Score space = obj.getScore(" ");
-        space.setScore(5);
-        if (hunterTeam.contains(player.getUniqueId())) {
-            Score score5 = obj.getScore(ChatColor.DARK_PURPLE + "⚔" + ChatColor.LIGHT_PURPLE + " Runner Position (" + Bukkit.getPlayer(runnerTeam.get(runnerNoEachHunter.get(player.getUniqueId()))).getName() + ") : ");
-            score5.setScore(4);
-            Score score6 = obj.getScore(player.getWorld() == Bukkit.getPlayer(runnerTeam.get(runnerNoEachHunter.get(player.getUniqueId()))).getWorld() || !timeStopped ? ChatColor.WHITE + "X:" + locRunner.getBlockX() + " Y:" + locRunner.getBlockY() + " Z:" + locRunner.getBlockZ()
-                    : ChatColor.WHITE + "X: " + "?" + " Y: " + "?" + " Z: " + "?");
-            score6.setScore(3);
-        }
-        if (hasGm1) {
-            Score score7 = obj.getScore(timeStopped ? (runnerTeam.contains(player.getUniqueId()) ? ChatColor.AQUA + "► Time will return in : " : ChatColor.AQUA + "Time status : " + ChatColor.GRAY + "|| PAUSE") : ChatColor.AQUA + "Creative mode in : " + ChatColor.WHITE + (cooldowns.get(player.getName())) + ChatColor.AQUA + "s");
-            score7.setScore(2);
-            
-            if (timeStopped) {
-                Score scoreTimeLeft = obj.getScore(timeBarCount(cooldownAfterStoppedTime.get(player)));
-                scoreTimeLeft.setScore(1);
-            }
-        } else {
-            Score score7 = obj.getScore((timeStopped ? (runnerTeam.contains(player.getUniqueId()) ? ChatColor.AQUA + "► Time will return in : " : ChatColor.AQUA + "Time status : " +  ChatColor.GRAY + "|| PAUSE") : ChatColor.AQUA + "Time : " + ChatColor.WHITE + gameTime + ChatColor.AQUA + "s"));
-            score7.setScore(2);
-
-            if (timeStopped) {
-                Score scoreTimeLeft = obj.getScore(timeBarCount(cooldownAfterStoppedTime.get(player)));
-                scoreTimeLeft.setScore(1);
-            }
-        }
-        Score score8 = obj.getScore(ChatColor.translateAlternateColorCodes('&',
-                "&7&oTuWavy | " + version));
-        score8.setScore(0);
-
-        player.setScoreboard(board);
-    }
-
-    // On config game board (o selecting team)
-    public void onConfigBoard (Player player) {
-
-        ScoreboardManager manager = Bukkit.getScoreboardManager();
-        Scoreboard board = manager.getNewScoreboard();
-        Objective obj = board.registerNewObjective("nsr-board", "dummy", ChatColor.translateAlternateColorCodes('&',
-                getConfig().getString("scoreboard.title-on-vote")));
-
-        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
-        Score space1 = obj.getScore(" ");
-        space1.setScore(10);
-        Score score = obj.getScore(ChatColor.WHITE + "");
-        score.setScore(9);
-        Score score2 = obj.getScore(ChatColor. translateAlternateColorCodes('&', "&b◆ &1[&c&lTEAMS&1]"));
-        score2.setScore(8);
-        Score score3 = obj.getScore(ChatColor.DARK_GREEN + "⚔" + ChatColor.GREEN + " RUNNER TEAM: " + ChatColor.YELLOW + (runnerTeam.size() - runnerDiedCount) + (runnerTeam.contains(player.getUniqueId()) ? ChatColor.DARK_GREEN + " YOU" : ""));
-        score3.setScore(7);
-        Score score4 = obj.getScore(ChatColor.GOLD + "\uD83C\uDFF9" + ChatColor.YELLOW +" HUNTER TEAM: " + ChatColor.YELLOW + hunterTeam.size() + (hunterTeam.contains(player.getUniqueId()) ? ChatColor.GOLD + " YOU" : ""));
-        score4.setScore(6);
-        Score space = obj.getScore(" ");
-        space.setScore(5);
-        Score score5 = obj.getScore(ChatColor.YELLOW + "⚔ glowing?: " + (hasGlowing ? ChatColor.GREEN + "✔" : ChatColor.RED + "✖"));
-        score5.setScore(4);
-        Score score8 = obj.getScore(ChatColor.DARK_AQUA + "⚔ can stop time?: " + (hasTimeStopper ? ChatColor.GREEN + "✔" : ChatColor.RED + "✖"));
-        score8.setScore(4);
-        Score score6 = obj.getScore(ChatColor.LIGHT_PURPLE + "Gamemode creative?: " + (hasGm1 ? ChatColor.GREEN + "✔" : ChatColor.RED + "✖"));
-        score6.setScore(2);
-        Score score7 = obj.getScore(ChatColor.translateAlternateColorCodes('&',
-                "&7&oTuWavy | " + version));
-        score7.setScore(1);
-
-        player.setScoreboard(board);
-    }
+//    public void onJoinBoard (Player player) {
+//        int playerHealth = (int) player.getHealth();
+//        ScoreboardManager manager = Bukkit.getScoreboardManager();
+//        Scoreboard board = manager.getNewScoreboard();
+//        Objective obj = board.registerNewObjective("nsr-board", "dummy", ChatColor.translateAlternateColorCodes('&',
+//                getConfig().getString("scoreboard.title-on-game-not-started")));
+//        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+//
+//        Score space = obj.getScore(" ");
+//        space.setScore(3);
+//        Score score6 = obj.getScore(ChatColor.translateAlternateColorCodes('&',
+//                "&fStatus: " + (!gameReady ? (started ? "&bON PROGRESS" : "&eREGENERATING MAP...") : "&aREADY")));
+//        score6.setScore(2);
+//        Score score7 = obj.getScore("");
+//        score7.setScore(1);
+//
+//        Score score8 = obj.getScore(ChatColor.translateAlternateColorCodes('&',
+//                "&7&oTuWavy | " + version));
+//        score8.setScore(0);
+//
+//        player.setScoreboard(board);
+//    }
+//
+//    public String timeBarCount(double currentTime) {
+//        double constTime = Integer.parseInt(getConfig().getString("time-stopper.while-time-was-stopped"));
+//
+//        double calTime10 = 10 * (constTime / 100);
+//        double calTime20 = 20 * (constTime / 100);
+//        double calTime30 = 30 * (constTime / 100);
+//        double calTime40 = 40 * (constTime / 100);
+//        double calTime50 = 50 * (constTime / 100);
+//        double calTime60 = 60 * (constTime / 100);
+//        double calTime70 = 70 * (constTime / 100);
+//        double calTime80 = 80 * (constTime / 100);
+//        double calTime90 = 90 * (constTime / 100);
+//        double calTime100 = 100 * (constTime / 100);
+//
+//        if (currentTime <= calTime100 && currentTime >= calTime90)
+//            return ChatColor.translateAlternateColorCodes('&', "&b██████████");
+//
+//        if (currentTime <= calTime90 && currentTime >= calTime80)
+//            return ChatColor.translateAlternateColorCodes('&', "&b█████████&7█");
+//
+//        if (currentTime <= calTime80 && currentTime >= calTime70)
+//            return ChatColor.translateAlternateColorCodes('&', "&b████████&7██");
+//
+//        if (currentTime <= calTime70 && currentTime >= calTime60)
+//            return ChatColor.translateAlternateColorCodes('&', "&b███████&7███");
+//
+//        if (currentTime <= calTime60 && currentTime >= calTime50)
+//            return ChatColor.translateAlternateColorCodes('&', "&b██████&7████");
+//
+//        if (currentTime <= calTime50 && currentTime >= calTime40)
+//            return ChatColor.translateAlternateColorCodes('&', "&b█████&7█████");
+//
+//        if (currentTime <= calTime40 && currentTime >= calTime30)
+//            return ChatColor.translateAlternateColorCodes('&', "&b████&7██████");
+//
+//        if (currentTime <= calTime30 && currentTime >= calTime20)
+//            return ChatColor.translateAlternateColorCodes('&', "&b███&7███████");
+//
+//        if (currentTime <= calTime20 && currentTime >= calTime10)
+//            return ChatColor.translateAlternateColorCodes('&', "&b██&7████████");
+//
+//        if (currentTime <= calTime10)
+//            return ChatColor.translateAlternateColorCodes('&', "&b█&7█████████");
+//
+//        return ChatColor.translateAlternateColorCodes('&', "&cAn error ourruced");
+//    }
+//
+//    // On during game board
+//    public void onGameBoard (Player player) {
+//        Player playerRunner = Bukkit.getServer().getPlayer(runnerTeam.get(runnerNoEachHunter.get(player.getUniqueId())));
+//        Location locRunner = playerRunner.getLocation();
+//        ScoreboardManager manager = Bukkit.getScoreboardManager();
+//        Scoreboard board = manager.getNewScoreboard();
+//        Objective obj = board.registerNewObjective("nsr-board", "dummy", ChatColor.translateAlternateColorCodes('&',
+//                getConfig().getString("scoreboard.title-on-game-started")));
+//
+//        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+//        Score space1 = obj.getScore(" ");
+//        space1.setScore(10);
+//        Score score = obj.getScore(ChatColor.DARK_AQUA + "Total Players: " + ChatColor.AQUA + allPlayers.size());
+//        score.setScore(9);
+//        Score score2 = obj.getScore(ChatColor. translateAlternateColorCodes('&', "&b◆ &1[&c&lTEAMS&1]"));
+//        score2.setScore(8);
+//        Score score3 = obj.getScore(ChatColor.DARK_GREEN + "⚔" + ChatColor.GREEN + " RUNNER TEAM: " + ChatColor.YELLOW + (runnerTeam.size() - runnerDiedCount) + (runnerTeam.contains(player.getUniqueId()) ? ChatColor.DARK_GREEN + " YOU" : ""));
+//        score3.setScore(7);
+//        Score score4 = obj.getScore(ChatColor.GOLD + "\uD83C\uDFF9" + ChatColor.GOLD + " HUNTER TEAM: " + ChatColor.YELLOW + hunterTeam.size() + (hunterTeam.contains(player.getUniqueId()) ? ChatColor.GOLD + " YOU" : ""));
+//        score4.setScore(6);
+//        Score space = obj.getScore(" ");
+//        space.setScore(5);
+//        if (hunterTeam.contains(player.getUniqueId())) {
+//            Score score5 = obj.getScore(ChatColor.DARK_PURPLE + "⚔" + ChatColor.LIGHT_PURPLE + " Runner Position (" + Bukkit.getPlayer(runnerTeam.get(runnerNoEachHunter.get(player.getUniqueId()))).getName() + ") : ");
+//            score5.setScore(4);
+//            Score score6 = obj.getScore(player.getWorld() == Bukkit.getPlayer(runnerTeam.get(runnerNoEachHunter.get(player.getUniqueId()))).getWorld() || !timeStopped ? ChatColor.WHITE + "X:" + locRunner.getBlockX() + " Y:" + locRunner.getBlockY() + " Z:" + locRunner.getBlockZ()
+//                    : ChatColor.WHITE + "X: " + "?" + " Y: " + "?" + " Z: " + "?");
+//            score6.setScore(3);
+//        }
+//        if (hasGm1) {
+//            Score score7 = obj.getScore(timeStopped ? (runnerTeam.contains(player.getUniqueId()) ? ChatColor.AQUA + "► Time will return in : " : ChatColor.AQUA + "Time status : " + ChatColor.GRAY + "|| PAUSE") : ChatColor.AQUA + "Creative mode in : " + ChatColor.WHITE + (cooldowns.get(player.getName())) + ChatColor.AQUA + "s");
+//            score7.setScore(2);
+//
+//            if (timeStopped) {
+//                Score scoreTimeLeft = obj.getScore(timeBarCount(cooldownAfterStoppedTime.get(player)));
+//                scoreTimeLeft.setScore(1);
+//            }
+//        } else {
+//            Score score7 = obj.getScore((timeStopped ? (runnerTeam.contains(player.getUniqueId()) ? ChatColor.AQUA + "► Time will return in : " : ChatColor.AQUA + "Time status : " +  ChatColor.GRAY + "|| PAUSE") : ChatColor.AQUA + "Time : " + ChatColor.WHITE + gameTime + ChatColor.AQUA + "s"));
+//            score7.setScore(2);
+//
+//            if (timeStopped) {
+//                Score scoreTimeLeft = obj.getScore(timeBarCount(cooldownAfterStoppedTime.get(player)));
+//                scoreTimeLeft.setScore(1);
+//            }
+//        }
+//        Score score8 = obj.getScore(ChatColor.translateAlternateColorCodes('&',
+//                "&7&oTuWavy | " + version));
+//        score8.setScore(0);
+//
+//        player.setScoreboard(board);
+//    }
+//
+//    // On config game board (o selecting team)
+//    public void onConfigBoard (Player player) {
+//
+//        ScoreboardManager manager = Bukkit.getScoreboardManager();
+//        Scoreboard board = manager.getNewScoreboard();
+//        Objective obj = board.registerNewObjective("nsr-board", "dummy", ChatColor.translateAlternateColorCodes('&',
+//                getConfig().getString("scoreboard.title-on-vote")));
+//
+//        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+//        Score space1 = obj.getScore(" ");
+//        space1.setScore(10);
+//        Score score = obj.getScore(ChatColor.WHITE + "");
+//        score.setScore(9);
+//        Score score2 = obj.getScore(ChatColor. translateAlternateColorCodes('&', "&b◆ &1[&c&lTEAMS&1]"));
+//        score2.setScore(8);
+//        Score score3 = obj.getScore(ChatColor.DARK_GREEN + "⚔" + ChatColor.GREEN + " RUNNER TEAM: " + ChatColor.YELLOW + (runnerTeam.size() - runnerDiedCount) + (runnerTeam.contains(player.getUniqueId()) ? ChatColor.DARK_GREEN + " YOU" : ""));
+//        score3.setScore(7);
+//        Score score4 = obj.getScore(ChatColor.GOLD + "\uD83C\uDFF9" + ChatColor.YELLOW +" HUNTER TEAM: " + ChatColor.YELLOW + hunterTeam.size() + (hunterTeam.contains(player.getUniqueId()) ? ChatColor.GOLD + " YOU" : ""));
+//        score4.setScore(6);
+//        Score space = obj.getScore(" ");
+//        space.setScore(5);
+//        Score score5 = obj.getScore(ChatColor.YELLOW + "⚔ glowing?: " + (hasGlowing ? ChatColor.GREEN + "✔" : ChatColor.RED + "✖"));
+//        score5.setScore(4);
+//        Score score8 = obj.getScore(ChatColor.DARK_AQUA + "⚔ can stop time?: " + (hasTimeStopper ? ChatColor.GREEN + "✔" : ChatColor.RED + "✖"));
+//        score8.setScore(4);
+//        Score score6 = obj.getScore(ChatColor.LIGHT_PURPLE + "Gamemode creative?: " + (hasGm1 ? ChatColor.GREEN + "✔" : ChatColor.RED + "✖"));
+//        score6.setScore(2);
+//        Score score7 = obj.getScore(ChatColor.translateAlternateColorCodes('&',
+//                "&7&oTuWavy | " + version));
+//        score7.setScore(1);
+//
+//        player.setScoreboard(board);
+//    }
 }

@@ -33,10 +33,12 @@ public class Event implements Listener {
     // Detect all event in game
 
     static Main plugin;
+    static Scoreboard scoreboard;
 
     Map<String, Integer> cooldownsToLobby = new HashMap<>();
     public Event(Main instance) {
         plugin = instance;
+        scoreboard = new Scoreboard(plugin);
     }
 
 //    เมื่อ Player เข้าเกม
@@ -62,11 +64,11 @@ public class Event implements Listener {
 
         if (plugin.allPlayers.contains(event.getPlayer().getUniqueId())) {
             if (!plugin.started)
-                plugin.onConfigBoard(event.getPlayer());
+                scoreboard.onConfigBoard(event.getPlayer());
         }
 
         if (!plugin.allPlayers.contains(event.getPlayer().getUniqueId()))
-            plugin.onJoinBoard(event.getPlayer());
+            scoreboard.onJoinBoard(event.getPlayer());
 
 //        if (plugin.started) {
 //            event.getPlayer().teleport(plugin.getConfig().getLocation("position.lobby"));
@@ -201,7 +203,6 @@ public class Event implements Listener {
 
                 if (plugin.runnerTeam.contains(player.getUniqueId())) {
                     plugin.runnerDiedCount++;
-                    plugin.lostRunnerPlayers.add(player.getUniqueId());
                     plugin.spectatorList.add(player.getUniqueId());
                     player.setGameMode(GameMode.SPECTATOR);
 
