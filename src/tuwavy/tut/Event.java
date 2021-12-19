@@ -34,11 +34,13 @@ public class Event implements Listener {
 
     static Main plugin;
     static Scoreboard scoreboard;
+    static GameGUI gameGUI;
 
     Map<String, Integer> cooldownsToLobby = new HashMap<>();
     public Event(Main instance) {
         plugin = instance;
-        scoreboard = new Scoreboard(plugin);
+        scoreboard = new Scoreboard(instance);
+        gameGUI = plugin.gameGUI;
     }
 
 //    เมื่อ Player เข้าเกม
@@ -51,15 +53,15 @@ public class Event implements Listener {
 //            event.getPlayer().setGameMode(GameMode.CREATIVE);
 //        }
 
-        if (plugin.onRegenWorld) {
-            event.getPlayer().kickPlayer(ChatColor.translateAlternateColorCodes('&', "&bRegenerating world &f&l(" + plugin.worldRegen + " / 3)"));
-        }
+//        if (plugin.onRegenWorld) {
+//            event.getPlayer().kickPlayer(ChatColor.translateAlternateColorCodes('&', "&bRegenerating world &f&l(" + plugin.worldRegen + " / 3)"));
+//        }
 //        event.getPlayer().teleport(plugin.getConfig().getLocation("position.lobby"));
 
         if (plugin.waitList.containsKey(event.getPlayer().getUniqueId())) {
             event.getPlayer().setGameMode(GameMode.SPECTATOR);
-            plugin.backGUI(event.getPlayer());
-            event.getPlayer().openInventory(plugin.backGUIInv);
+            gameGUI.backGUI(event.getPlayer());
+            event.getPlayer().openInventory(gameGUI.backGUIInv);
         }
 
         if (plugin.allPlayers.contains(event.getPlayer().getUniqueId())) {
@@ -293,7 +295,7 @@ public class Event implements Listener {
 
         Player player = (Player) e.getWhoClicked();
 
-        if (e.getInventory().equals(plugin.normalGUIInv)) {
+        if (e.getInventory().equals(gameGUI.normalGUIInv)) {
             e.setCancelled(true);
 
             if (e.getSlot() == 11) {
@@ -309,7 +311,7 @@ public class Event implements Listener {
             }
         }
 
-        if (e.getInventory().equals(plugin.runnerGUIInv)) {
+        if (e.getInventory().equals(gameGUI.runnerGUIInv)) {
             e.setCancelled(true);
             if (e.getSlot() == 0) {
                 player.playSound(player.getLocation(), Sound.BLOCK_DISPENSER_DISPENSE, 1.0f, 1.0f);
@@ -332,7 +334,7 @@ public class Event implements Listener {
             if (e.getSlot() == 17) {
 //                player.closeInventory();
                 player.playSound(player.getLocation(), Sound.BLOCK_DISPENSER_DISPENSE, 1.0f, 1.0f);
-                player.openInventory(plugin.configureGUIInv);
+                player.openInventory(gameGUI.configureGUIInv);
                 return;
             }
 
@@ -344,7 +346,7 @@ public class Event implements Listener {
             }
         }
 
-        if (e.getInventory().equals(plugin.backGUIInv)) {
+        if (e.getInventory().equals(gameGUI.backGUIInv)) {
             e.setCancelled(true);
             if (e.getSlot() == 11) {
                 if (Objects.equals(plugin.waitList.get(e.getWhoClicked().getUniqueId()), "runner")) {
@@ -380,15 +382,15 @@ public class Event implements Listener {
             }
         }
 
-        if (e.getInventory().equals(plugin.configureGUIInv)) {
+        if (e.getInventory().equals(gameGUI.configureGUIInv)) {
             e.setCancelled(true);
             if (e.getSlot() == 10) {
                 player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_PLACE, 1.0f, 1.0f);
                 plugin.onToggleRecord(player);
-                plugin.configureGUI();
+                gameGUI.configureGUI();
 
                 for (UUID uuid : plugin.runnerTeam) {
-                    Bukkit.getPlayer(uuid).openInventory(plugin.configureGUIInv);
+                    Bukkit.getPlayer(uuid).openInventory(gameGUI.configureGUIInv);
                 }
                 return;
             }
@@ -396,9 +398,9 @@ public class Event implements Listener {
             if (e.getSlot() == 13) {
                 // Gm 1 event toggle btn
                 plugin.onToggleGm1(player);
-                plugin.configureGUI();
+                gameGUI.configureGUI();
                 for (UUID uuid : plugin.runnerTeam) {
-                    Bukkit.getPlayer(uuid).openInventory(plugin.configureGUIInv);
+                    Bukkit.getPlayer(uuid).openInventory(gameGUI.configureGUIInv);
                 }
 
                 return;
@@ -407,9 +409,9 @@ public class Event implements Listener {
             if (e.getSlot() == 14) {
                 // Gm 1 event toggle btn
                 plugin.onToggleTimeStopper(player);
-                plugin.configureGUI();
+                gameGUI.configureGUI();
                 for (UUID uuid : plugin.runnerTeam) {
-                    Bukkit.getPlayer(uuid).openInventory(plugin.configureGUIInv);
+                    Bukkit.getPlayer(uuid).openInventory(gameGUI.configureGUIInv);
                 }
 
                 return;
@@ -418,9 +420,9 @@ public class Event implements Listener {
             if (e.getSlot() == 15) {
                 // Glowing effect toggle btn
                 plugin.onToggleGlowingFx(player);
-                plugin.configureGUI();
+                gameGUI.configureGUI();
                 for (UUID uuid : plugin.runnerTeam) {
-                    Bukkit.getPlayer(uuid).openInventory(plugin.configureGUIInv);
+                    Bukkit.getPlayer(uuid).openInventory(gameGUI.configureGUIInv);
                 }
                 return;
             }
@@ -428,7 +430,7 @@ public class Event implements Listener {
             if (e.getSlot() == 8) {
 //                player.closeInventory();
                 player.playSound(player.getLocation(), Sound.BLOCK_DISPENSER_DISPENSE, 1.0f, 1.0f);
-                player.openInventory(plugin.runnerGUIInv);
+                player.openInventory(gameGUI.runnerGUIInv);
                 return;
             }
 
@@ -449,15 +451,15 @@ public class Event implements Listener {
             }
         }
 
-        if (e.getInventory().equals(plugin.selectTimeInv)) {
+        if (e.getInventory().equals(gameGUI.selectTimeInv)) {
             e.setCancelled(true);
             if (e.getSlot() == 11) {
                 player.playSound(player.getLocation(), Sound.ENTITY_COW_AMBIENT, 1.0f, 1.0f);
                 plugin.onChooseDay(player);
-                plugin.selectTimeGUI();
+                gameGUI.selectTimeGUI();
 
                 for (UUID uuid : plugin.runnerTeam) {
-                    Bukkit.getPlayer(uuid).openInventory(plugin.selectTimeInv);
+                    Bukkit.getPlayer(uuid).openInventory(gameGUI.selectTimeInv);
                 }
                 return;
             }
@@ -466,10 +468,10 @@ public class Event implements Listener {
                 // Gm 1 event toggle btn
                 player.playSound(player.getLocation(), Sound.ENTITY_BAT_AMBIENT, 1.0f, 1.0f);
                 plugin.onChooseNight(player);
-                plugin.selectTimeGUI();
+                gameGUI.selectTimeGUI();
 
                 for (UUID uuid : plugin.runnerTeam) {
-                    Bukkit.getPlayer(uuid).openInventory(plugin.selectTimeInv);
+                    Bukkit.getPlayer(uuid).openInventory(gameGUI.selectTimeInv);
                 }
 
                 return;
@@ -478,14 +480,14 @@ public class Event implements Listener {
             if (e.getSlot() == 8) {
 //                player.closeInventory();
                 player.playSound(player.getLocation(), Sound.BLOCK_DISPENSER_DISPENSE, 1.0f, 1.0f);
-                player.openInventory(plugin.runnerGUIInv);
+                player.openInventory(gameGUI.runnerGUIInv);
                 return;
             }
 
             if (e.getSlot() == 17) {
                 // Start Game
                 player.playSound(player.getLocation(), Sound.BLOCK_DISPENSER_DISPENSE, 1.0f, 1.0f);
-                player.openInventory(plugin.configureGUIInv);
+                player.openInventory(gameGUI.configureGUIInv);
                 return;
             }
 
@@ -516,9 +518,9 @@ public class Event implements Listener {
                     if (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) {
                         if (plugin.allPlayers.contains(e.getPlayer().getUniqueId())) {
                             if (plugin.runnerTeam.contains(player.getUniqueId())) {
-                                player.openInventory(plugin.runnerGUIInv);
+                                player.openInventory(gameGUI.runnerGUIInv);
                             } else {
-                                player.openInventory(plugin.normalGUIInv);
+                                player.openInventory(gameGUI.normalGUIInv);
                             }
                         } else {
                             e.getPlayer().spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(ChatColor.RED + "You must to join the game first"));
